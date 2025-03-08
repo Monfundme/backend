@@ -1,0 +1,31 @@
+{
+  "name": "monfundme-backend",
+  "version": "1.0.0",
+  "description": "Backend server for MonFundMe campaign management",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "create": "node test/create.js"
+  },
+  "keywords": [
+    "campaign",
+    "fundraising",
+    "blockchain"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.8.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "ethers": "^5.7.2",
+    "express": "^4.18.3",
+    "express-validator": "^7.0.1",
+    "firebase-admin": "^12.0.0",
+    "node-cron": "^3.0.3"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0"
+  }
+}
