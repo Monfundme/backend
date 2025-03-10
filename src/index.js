@@ -3,10 +3,10 @@ const express = require('express');
 const cors = require('cors');
 const { ethers } = require('ethers');
 const { initializeFirebase } = require('./config/firebase');
-const campaignService = require('./services/campaignService');
-const campaignRoutes = require('./routes/campaignRoutes');
+const voteService = require('./services/voteService');
+const voteRoutes = require('./routes/voteRoutes');
 const voteExecutorABI = require('../abi/voteExecutorABI.json');
-
+const campaignRoutes = require('./routes/campaignRoutes');
 const app = express();
 const port = process.env.PORT || 4000;
 
@@ -32,7 +32,7 @@ const corsOptions = {
 };
 
 // Initialize campaign processor
-campaignService.initializeCampaignProcessor(
+voteService.initializeCampaignProcessor(
   db,
   provider,
   process.env.VOTE_EXECUTOR_ADDRESS,
@@ -44,14 +44,14 @@ app.use(cors(corsOptions));
 app.use(express.json());
 
 // Routes
-app.use('/api/campaigns', campaignRoutes(db, campaignService, voteContract));
-
+app.use('/api/votes', voteRoutes(db, voteService, voteContract));
+app.use('/api/campaigns', campaignRoutes);
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Error handling middleware
+// Error handling middleware`
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({

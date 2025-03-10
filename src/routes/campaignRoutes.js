@@ -1,125 +1,82 @@
 const express = require('express');
-const { isAddress } = require('ethers');
 const router = express.Router();
+const axios = require('axios');
 
-// Validation middleware
-const validateCampaign = (req, res, next) => {
-  const { title, description, goal, userId } = req.body;
-  
-  if (!title || typeof title !== 'string' || title.trim().length === 0) {
-    return res.status(400).json({ error: 'Valid title is required' });
+// GraphQL endpoint
+const ENVIO_ENDPOINT = 'http://localhost:8080/v1/graphql';
+
+// Helper function to make GraphQL queries
+async function queryEnvio(query, variables = {}) {
+  try {
+    const response = await axios.post(ENVIO_ENDPOINT, {
+      query,
+      variables
+    });
+    return response.data.data;
+  } catch (error) {
+    console.error('GraphQL query error:', error);
+    throw new Error('Failed to fetch data from indexer');
   }
-  if (!description || typeof description !== 'string' || description.trim().length === 0) {
-    return res.status(400).json({ error: 'Valid description is required' });
-  }
-  if (!goal || isNaN(goal) || goal <= 0) {
-    return res.status(400).json({ error: 'Valid goal amount is required' });
-  }
-  if (!userId || typeof userId !== 'string' || userId.trim().length === 0) {
-    return res.status(400).json({ error: 'Valid userId is required' });
-  }
+}
 
-  next();
-};
+// Get paginated campaigns
+router.get('/', async (req, res) => {
+  try {
+    console.log("Querying campaigns...");
+    // const page = parseInt(req.query.page) || 1;
+    // const skip = (page - 1) * 25;
 
-const validateVote = (req, res, next) => {
-  const { campaignId, vote, voterAddress } = req.body;
-  
-  if (!campaignId || typeof campaignId !== 'string') {
-    return res.status(400).json({ error: 'Valid campaignId is required' });
-  }
-  if (typeof vote !== 'boolean') {
-    return res.status(400).json({ error: 'Vote must be true (approve) or false (reject)' });
-  }
-  if (!voterAddress || !isAddress(voterAddress)) {
-    return res.status(400).json({ error: 'Valid Ethereum address is required' });
-  }
-
-  next();
-};
-
-module.exports = (db, campaignService, voteContract) => {
-  // Create new campaign (adds to queue)
-  router.post('/create', validateCampaign, async (req, res) => {
-    try {
-      const result = await campaignService.addToQueue(db, req.body);
-      res.status(201).json(result);
-    } catch (error) {
-      console.error('Error creating campaign:', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // Vote on a pending campaign
-  router.post('/vote', validateVote, async (req, res) => {
-    try {
-      const { campaignId, vote, voterAddress } = req.body;
-
-      // Check if campaign exists and is pending
-      const campaign = await db
-        .collection('pending_campaigns')
-        .doc(campaignId)
-        .get();
-
-      if (!campaign.exists) {
-        return res.status(404).json({ error: 'Campaign not found or not in pending state' });
+    const query = `
+      query MyQuery {
+       Campaign {
+        campaignId
+        createdAt
+        currentAmount
+        deadline
+        description
+        id
       }
+    }`;
 
-      // Update campaign document with vote information
-      const timestamp = admin.firestore.FieldValue.serverTimestamp();
-      await campaign.ref.update({
-        [`votes.${voterAddress}`]: vote,
-        updatedAt: timestamp
-      });
+    const data = await queryEnvio(query);
+    res.json(data.campaigns);
+  } catch (error) {
+    res.status(500).json({ error: error.message || error });
+  }
+});
 
-      res.json({ 
-        success: true,
-        message: 'Vote recorded successfully'
-      });
-      
-    } catch (error) {
-      console.error('Error processing vote:', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
+// Get account details and associated campaigns
+router.get('/account/:address', async (req, res) => {
+  try {
+    const { address } = req.params;
 
-  // Get all pending campaigns
-  router.get('/pending', async (req, res) => {
-    try {
-      const campaigns = await campaignService.getCampaignsByStatus(db, 'pending');
-      res.json(campaigns);
-    } catch (error) {
-      console.error('Error fetching pending campaigns:', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // Get specific campaign details
-  router.get('/:campaignId', async (req, res) => {
-    try {
-      const campaignId = req.params.campaignId;
-      const campaign = await db
-        .collection('pending_campaigns')
-        .doc(campaignId)
-        .get();
-
-      if (!campaign.exists) {
-        return res.status(404).json({ error: 'Campaign not found' });
+    const query = `
+      query GetAccount($address: String!) {
+        account(id: $address) {
+          id
+          totalCampaignsCreated
+          campaigns {
+            id
+            title
+            description
+            goal
+            status
+            createdAt
+          }
+          votes {
+            campaignId
+            support
+            votedAt
+          }
+        }
       }
+    `;
 
-      // If campaign exists, get its voting status from blockchain
-      const voteResult = await voteContract.getVoteResult(campaignId);
+    const data = await queryEnvio(query, { address });
+    res.json(data.account);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
-      res.json({
-        id: campaign.id,
-        ...campaign.data(),
-        currentVoteStatus: voteResult
-      });
-    } catch (error) {
-      console.error('Error fetching campaign:', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  return router;
-};
+module.exports = router;
