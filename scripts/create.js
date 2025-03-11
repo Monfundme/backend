@@ -1,26 +1,29 @@
 const axios = require('axios');
 
+require('dotenv').config();
+
 const testCreateCampaign = async () => {
-    console.log("Testing create campaign... ")
+  console.log("Testing create campaign... ")
   try {
     const campaignData = {
-      title: "Test Campaign",
+      title: "Testiiiinnngggg",
       description: "This is a test campaign created via API",
-      goal: 1000, 
-      userId: "testUser123", 
+      targetAmount: 100,
+      deadline: 1715222400,
+      userId: "0xAB49e973b6a443C9C34109D554Cb8d2826ffe4bE",
+      imageUrl: "https://via.placeholder.com/150"
     };
 
-    const response = await axios.post(`http://localhost:${process.env.PORT}/api/campaigns/create`, campaignData);
+    const response = await axios.post(`http://localhost:${process.env.PORT}/api/votes/create`, campaignData);
 
     console.log('Campaign created successfully:');
     console.log(response.data);
 
   } catch (error) {
-    console.error('Error creating campaign:', error?.response);
     if (error.response) {
-      console.error(error.response.data);
+      console.error("error from server --- ", error?.response?.data);
     } else {
-      console.error(error.message);
+      console.error(error);
     }
   }
 };

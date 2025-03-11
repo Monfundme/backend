@@ -8,10 +8,21 @@ const PENDING_COLLECTION = 'pending_campaigns';
 const ACTIVE_COLLECTION = 'active_campaigns';
 const REJECTED_COLLECTION = 'rejected_campaigns';
 
-const addToQueue = async (db, campaignData) => {
+const addToQueue = async (db, proposalId, campaignData) => {
   try {
+    // Check if proposalId already exists in queue
+    const queueSnapshot = await db
+      .collection(QUEUE_COLLECTION)
+      .where('proposalId', '==', proposalId)
+      .get();
+
+    if (!queueSnapshot.empty) {
+      return { success: false, message: 'Campaign with this proposalId already exists in queue' };
+    }
+
     const timestamp = admin.firestore.FieldValue.serverTimestamp();
     const campaign = {
+      proposalId,
       ...campaignData,
       status: 'queued',
       createdAt: timestamp,
@@ -21,8 +32,10 @@ const addToQueue = async (db, campaignData) => {
     await db.collection(QUEUE_COLLECTION).add(campaign);
     return { success: true, message: 'Campaign added to queue successfully' };
   } catch (error) {
+
     console.error('Error adding campaign to queue:', error);
-    throw new Error('Failed to add campaign to queue');
+    return { success: false, message: 'Error adding campaign to queue' };
+
   }
 };
 
@@ -41,11 +54,11 @@ const moveToPending = async (db) => {
     }
 
     const timestamp = admin.firestore.FieldValue.serverTimestamp();
-    
+
     // Process each campaign
     for (const doc of queueSnapshot.docs) {
       const campaignData = doc.data();
-      
+
       // Create new document in pending collection
       const pendingRef = db.collection(PENDING_COLLECTION).doc();
       batch.set(pendingRef, {
@@ -66,7 +79,7 @@ const moveToPending = async (db) => {
     };
   } catch (error) {
     console.error('Error moving campaigns to pending:', error);
-    throw new Error('Failed to move campaigns to pending');
+    return { success: false, message: 'Error moving campaigns to pending' };
   }
 };
 
@@ -80,7 +93,7 @@ const updateCampaignStatus = async (db, campaignId, newStatus) => {
     return { success: true, message: 'Campaign status updated successfully' };
   } catch (error) {
     console.error('Error updating campaign status:', error);
-    throw new Error('Failed to update campaign status');
+    return { success: false, message: 'Error updating campaign status' };
   }
 };
 
@@ -99,7 +112,7 @@ const getCampaignsByStatus = async (db, status) => {
     }));
   } catch (error) {
     console.error('Error fetching campaigns:', error);
-    throw new Error('Failed to fetch campaigns');
+    return { success: false, message: 'Error fetching campaigns' };
   }
 };
 
@@ -122,7 +135,7 @@ const processPendingCampaigns = async (db, provider, contractAddress, voteExecut
     // Process each campaign
     for (const doc of pendingSnapshot.docs) {
       const campaign = { id: doc.id, ...doc.data() };
-      
+
       try {
         const voteResult = await contract.getVoteResult(campaign.id);
         const hasPassedVoting = voteResult.passed;
@@ -165,7 +178,7 @@ const processPendingCampaigns = async (db, provider, contractAddress, voteExecut
     };
   } catch (error) {
     console.error('Error resolving campaigns:', error);
-    throw new Error('Failed to resolve campaigns');
+    return { success: false, message: 'Error resolving campaigns' };
   }
 };
 
@@ -183,7 +196,7 @@ const processQueuedCampaigns = async (db) => {
     }
 
     const timestamp = admin.firestore.FieldValue.serverTimestamp();
-    
+
     for (const doc of queueSnapshot.docs) {
       const campaignData = doc.data();
       const pendingRef = db.collection(PENDING_COLLECTION).doc();
@@ -203,7 +216,7 @@ const processQueuedCampaigns = async (db) => {
     };
   } catch (error) {
     console.error('Error moving campaigns to pending:', error);
-    throw new Error('Failed to move campaigns to pending');
+    return { success: false, message: 'Error moving campaigns to pending' };
   }
 };
 
@@ -215,13 +228,14 @@ const initializeCampaignProcessor = (db, provider, contractAddress, voteExecutor
     try {
       // Process queued campaigns first
       await processQueuedCampaigns(db);
-      
+
       // Then process pending campaigns
       await processPendingCampaigns(db, provider, contractAddress, voteExecutorABI);
-      
+
       console.log('Daily campaign processing completed successfully');
     } catch (error) {
       console.error('Error in daily campaign processing:', error);
+      return { success: false, message: 'Error in daily campaign processing' };
     }
   });
 
@@ -235,5 +249,5 @@ module.exports = {
   getCampaignsByStatus,
   processPendingCampaigns,
   processQueuedCampaigns,
-  initializeCampaignProcessor
+  initializeCampaignProcessor,
 }; 

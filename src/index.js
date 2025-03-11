@@ -1,12 +1,11 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const { ethers } = require('ethers');
+const { JsonRpcProvider, Wallet, Contract } = require('ethers');
 const { initializeFirebase } = require('./config/firebase');
 const voteService = require('./services/voteService');
 const voteRoutes = require('./routes/voteRoutes');
 const voteExecutorABI = require('../abi/voteExecutorABI.json');
-const campaignRoutes = require('./routes/campaignRoutes');
 const app = express();
 const port = process.env.PORT || 4000;
 
@@ -14,9 +13,9 @@ const port = process.env.PORT || 4000;
 const db = initializeFirebase();
 
 // Initialize blockchain provider and contract
-const provider = new ethers.providers.JsonRpcProvider(process.env.RPC_URL);
-const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
-const voteContract = new ethers.Contract(
+const provider = new JsonRpcProvider(process.env.RPC_URL);
+const wallet = new Wallet(process.env.PRIVATE_KEY, provider);
+const voteContract = new Contract(
   process.env.VOTE_EXECUTOR_ADDRESS,
   voteExecutorABI,
   wallet
@@ -44,8 +43,7 @@ app.use(cors(corsOptions));
 app.use(express.json());
 
 // Routes
-app.use('/api/votes', voteRoutes(db, voteService, voteContract));
-app.use('/api/campaigns', campaignRoutes);
+app.use('/api/votes', voteRoutes(db));
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
@@ -63,4 +61,4 @@ app.use((err, req, res, next) => {
 // Start server
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
-}); 
+});

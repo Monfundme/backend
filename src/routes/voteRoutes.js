@@ -1,22 +1,29 @@
 const express = require('express');
-const { isAddress } = require('ethers');
+const { isAddress, toUtf8Bytes, keccak256 } = require('ethers');
+const { addToQueue } = require('../services/voteService');
 const router = express.Router();
 
 // Validation middleware
 const validateCampaign = (req, res, next) => {
-  const { title, description, goal, userId } = req.body;
-  
+  const { title, description, targetAmount, deadline, userId, imageUrl } = req.body;
+
   if (!title || typeof title !== 'string' || title.trim().length === 0) {
     return res.status(400).json({ error: 'Valid title is required' });
   }
   if (!description || typeof description !== 'string' || description.trim().length === 0) {
     return res.status(400).json({ error: 'Valid description is required' });
   }
-  if (!goal || isNaN(goal) || goal <= 0) {
-    return res.status(400).json({ error: 'Valid goal amount is required' });
+  if (!targetAmount || isNaN(targetAmount) || targetAmount <= 0) {
+    return res.status(400).json({ error: 'Valid target amount is required' });
+  }
+  if (!deadline || isNaN(deadline) || deadline <= 0) {
+    return res.status(400).json({ error: 'Valid deadline is required' });
   }
   if (!userId || typeof userId !== 'string' || userId.trim().length === 0) {
     return res.status(400).json({ error: 'Valid userId is required' });
+  }
+  if (!imageUrl || typeof imageUrl !== 'string') {
+    return res.status(400).json({ error: 'Valid imageUrl is required' });
   }
 
   next();
@@ -24,7 +31,7 @@ const validateCampaign = (req, res, next) => {
 
 const validateVote = (req, res, next) => {
   const { campaignId, vote, voterAddress } = req.body;
-  
+
   if (!campaignId || typeof campaignId !== 'string') {
     return res.status(400).json({ error: 'Valid campaignId is required' });
   }
@@ -38,14 +45,21 @@ const validateVote = (req, res, next) => {
   next();
 };
 
-module.exports = (db, voteService, voteContract) => {
+module.exports = (db) => {
   // Create new campaign (adds to queue)
   router.post('/create', validateCampaign, async (req, res) => {
     try {
-      const result = await voteService.addToQueue(db, req.body);
-      res.status(201).json(result);
+
+      const proposalId = keccak256(toUtf8Bytes(req.body.title));
+      const result = await addToQueue(db, proposalId, req.body);
+
+      if (result.success) {
+        res.status(201).json(result);
+      } else {
+        res.status(500).json(result);
+      }
+
     } catch (error) {
-      console.error('Error creating campaign:', error);
       res.status(500).json({ error: error.message });
     }
   });
@@ -72,11 +86,11 @@ module.exports = (db, voteService, voteContract) => {
         updatedAt: timestamp
       });
 
-      res.json({ 
+      res.json({
         success: true,
         message: 'Vote recorded successfully'
       });
-      
+
     } catch (error) {
       console.error('Error processing vote:', error);
       res.status(500).json({ error: error.message });
@@ -90,6 +104,17 @@ module.exports = (db, voteService, voteContract) => {
       res.json(campaigns);
     } catch (error) {
       console.error('Error fetching pending campaigns:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get all queued campaigns
+  router.get('/queued', async (req, res) => {
+    try {
+      const campaigns = await voteService.getCampaignsByStatus(db, 'queued');
+      res.json(campaigns);
+    } catch (error) {
+      console.error('Error fetching queued campaigns:', error);
       res.status(500).json({ error: error.message });
     }
   });

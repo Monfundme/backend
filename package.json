@@ -6,8 +6,9 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
-    "create": "node test/create.js",
-    "queryCampaigns": "node scripts/queryCampaigns.js"
+    "create": "node scripts/create.js",
+    "queryCampaigns": "node scripts/queryCampaigns.js",
+    "queue": "node scripts/queue.js"
   },
   "keywords": [
     "campaign",
@@ -20,7 +21,7 @@
     "axios": "^1.8.2",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
-    "ethers": "^5.7.2",
+    "ethers": "^6.13.5",
     "express": "^4.18.3",
     "express-validator": "^7.0.1",
     "firebase-admin": "^12.0.0",
