@@ -7,7 +7,7 @@ const main = async () => {
     try {
         console.log("Moving Queued campaigns... ")
         const res = await processQueuedCampaigns(db);
-        console.log("res....", res)
+        console.log("res....", res);
 
     } catch (error) {
         console.log("error...", error)

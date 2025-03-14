@@ -52,7 +52,7 @@ npm start
 ### Campaigns
 
 - `POST /api/campaigns/queue` - Add a new campaign to the queue
-  - Required fields: title, description, goal, userId
+  - Required fields: title, description, goal, campaignOwner
 
 - `POST /api/campaigns/process-queue` - Move up to 10 campaigns from queue to pending
 

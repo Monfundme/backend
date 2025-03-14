@@ -5,12 +5,13 @@ require('dotenv').config();
 const testCreateCampaign = async () => {
   console.log("Testing create campaign... ")
   try {
+
     const campaignData = {
       title: "Testiiiinnngggg",
       description: "This is a test campaign created via API",
       targetAmount: 100,
-      deadline: 1715222400,
-      userId: "0xAB49e973b6a443C9C34109D554Cb8d2826ffe4bE",
+      deadline: 1745785863,
+      campaignOwner: "0xAB49e973b6a443C9C34109D554Cb8d2826ffe4bE",
       imageUrl: "https://via.placeholder.com/150"
     };
 
