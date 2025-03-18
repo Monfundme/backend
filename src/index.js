@@ -23,7 +23,7 @@ const voteContract = new Contract(
 
 // CORS configuration
 const corsOptions = {
-  origin: process.env.ALLOWED_ORIGINS?.split(',') || `http://localhost:${port}`,
+  origin: ["https://monfundme.vercel.app", "http://localhost:3000"],
   methods: ['GET', 'POST', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
